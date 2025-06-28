@@ -1,10 +1,10 @@
-import { FC, useState } from "react";
+import { FC } from "react";
 import { EmotionEntityType } from "@/types/common";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/utils/cn";
 import { CircleX, GripVertical } from "lucide-react";
-import { useSwipeable } from "react-swipeable";
+import { useSwipeToDelete } from "@/hooks/useSwipeToDelete";
 
 interface Props {
   emotion: EmotionEntityType;
@@ -22,50 +22,23 @@ const SortableEmotionCard: FC<Props> = ({ emotion, onRemove, isMobile }) => {
     isDragging,
   } = useSortable({ id: emotion.id });
 
-  const [isSwiping, setIsSwiping] = useState(false);
-  const [swipeDelta, setSwipeDelta] = useState(0); // Динамічний зсув під час свайпу
-
-  const swipeHandlers = useSwipeable({
-    onSwiping: ({ deltaX }) => {
-      if (isMobile) {
-        // Оновлюємо зсув під час руху пальця (лише вліво)
-        setSwipeDelta(Math.min(deltaX, 0));
-      }
-    },
-    onSwipedLeft: () => {
-      if (isMobile) {
-        setIsSwiping(true);
-        setTimeout(() => {
-          onRemove(emotion.id);
-          setIsSwiping(false);
-          setSwipeDelta(0);
-        }, 300); // Затримка для завершення анімації
-      }
-    },
-    onSwiped: () => {
-      // Скидаємо зсув, якщо свайп не завершився видаленням
-      if (!isSwiping) {
-        setSwipeDelta(0);
-      }
-    },
-    trackMouse: false,
-    delta: 50, // Чутливість свайпу
-    preventScrollOnSwipe: true, // Запобігає скролу під час свайпу
+  const { swipeHandlers, isSwiping, getSwipeStyle } = useSwipeToDelete({
+    onSwipe: () => onRemove(emotion.id),
+    enabled: isMobile,
   });
 
-  const style = {
-    transform: isSwiping
-      ? "translateX(-100%)"
-      : swipeDelta !== 0
-      ? `translateX(${swipeDelta}px)`
-      : CSS.Transform.toString(transform), // dnd-kit або свайп
-    transition: isDragging
-      ? transition
-      : isSwiping
-      ? "transform 0.3s ease, opacity 0.3s ease"
-      : "none", // Без transition під час динамічного свайпу
-    opacity: isDragging ? 0.5 : isSwiping ? 0 : 1,
-  };
+  const dndTransform = CSS.Transform.toString(transform);
+  const style = getSwipeStyle(dndTransform);
+
+  // Додаємо transition для dnd-kit, якщо не відбувається свайп
+  if (!isSwiping && isDragging) {
+    style.transition = transition ?? "transform 0.2s ease";
+  }
+
+  // Змінюємо opacity під час перетягування
+  if (isDragging) {
+    style.opacity = 0.5;
+  }
 
   return (
     <div
@@ -74,18 +47,15 @@ const SortableEmotionCard: FC<Props> = ({ emotion, onRemove, isMobile }) => {
       className={cn(
         "relative flex flex-col gap-2 p-4 border border-foreground text-black rounded",
         emotion.color,
-        {
-          "cursor-grab": isDragging && !isSwiping,
-          "-translate-x-full opacity-0 transition-transform duration-300 ease-in-out":
-            isSwiping,
-        }
+        { "cursor-grab": isDragging }
       )}
     >
+      {/* Кнопка видалення для десктопу */}
       {!isMobile && (
         <button
           className="absolute top-2 right-2 z-10 cursor-pointer"
           onClick={(e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // Зупиняємо спливання, щоб не активувати dnd
             onRemove(emotion.id);
           }}
           aria-label={`Видалити емоцію ${emotion.label}`}
@@ -93,19 +63,20 @@ const SortableEmotionCard: FC<Props> = ({ emotion, onRemove, isMobile }) => {
           <CircleX size={18} />
         </button>
       )}
+
+      {/* "Ручка" для перетягування */}
       <div
         {...attributes}
         {...listeners}
         className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing"
-        style={{ touchAction: "none" }}
+        style={{ touchAction: "none" }} // Важливо для TouchSensor
         aria-label={`Перетягнути емоцію ${emotion.label}`}
       >
         <GripVertical size={18} />
       </div>
-      <div
-        {...(isMobile ? swipeHandlers : {})}
-        className="flex flex-col items-center gap-2 mt-4"
-      >
+
+      {/* Контент картки */}
+      <div {...swipeHandlers} className="flex flex-col items-center gap-2 mt-4">
         <span className="text-3xl">{emotion.icon}</span>
         <span>{emotion.label}</span>
       </div>

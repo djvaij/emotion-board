@@ -15,26 +15,25 @@ import {
 } from "@dnd-kit/sortable";
 import { observer } from "mobx-react-lite";
 // import rootStore from "@/stores";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import SortableEmotionCard from "./SortableEmotionCard";
 import { useEmotionStore } from "@/hooks/useEmotionStore";
+import useMediaQuery from "@/hooks/useMediaQuery";
 
 const EmotionsList = () => {
+  const [isMounted, setIsMounted] = useState(false);
   const store = useEmotionStore();
   const { emotions, reorder, isLoading } = store;
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setIsMounted(true);
   }, []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 }, // Затримка для drag-подій
+      activationConstraint: { delay: 200, tolerance: 5 },
     })
   );
 
@@ -51,7 +50,7 @@ const EmotionsList = () => {
     store.removeEmotion(id);
   };
 
-  if (isLoading) {
+  if (!isMounted || isLoading) {
     return <div>Завантаження...</div>;
   }
 
