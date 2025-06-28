@@ -22,23 +22,17 @@ const SortableEmotionCard: FC<Props> = ({ emotion, onRemove, isMobile }) => {
     isDragging,
   } = useSortable({ id: emotion.id });
 
-  const { swipeHandlers, isSwiping, getSwipeStyle } = useSwipeToDelete({
+  const { swipeHandlers, getSwipeStyle } = useSwipeToDelete({
     onSwipe: () => onRemove(emotion.id),
     enabled: isMobile,
   });
 
   const dndTransform = CSS.Transform.toString(transform);
-  const style = getSwipeStyle(dndTransform);
-
-  // Додаємо transition для dnd-kit, якщо не відбувається свайп
-  if (!isSwiping && isDragging) {
-    style.transition = transition ?? "transform 0.2s ease";
-  }
-
-  // Змінюємо opacity під час перетягування
-  if (isDragging) {
-    style.opacity = 0.5;
-  }
+  const style = {
+    ...getSwipeStyle(dndTransform),
+    transition: transition, // Застосовуємо transition для плавної анімації
+    opacity: isDragging ? 0.5 : 1, // Змінюємо opacity під час перетягування
+  };
 
   return (
     <div
