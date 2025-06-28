@@ -86,7 +86,7 @@ export const AddEmotionModal = observer(
                   >
                     {emotion.label}
                     <div
-                      className={`inline-flex w-4.5 ml-2 rounded ${emotion.color}`}
+                      className={`inline-flex w-4.5 h-full ml-2 rounded ${emotion.color}`}
                     ></div>
                   </button>
                 ))}
